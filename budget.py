@@ -14,7 +14,7 @@ class Category:
     return False
 
   def get_balance(self):
-    return sum(map(lambda entry: entry["amount"], self.ledger))
+    return sum(entry["amount"] for entry in self.ledger)
 
   def transfer(self, amount, budget):
     if self.withdraw(amount, "Transfer to " + budget.label):
@@ -26,42 +26,31 @@ class Category:
     return amount <= self.get_balance()
 
   def get_withdrawals(self):
-    withdraw_operations = filter(lambda entry: entry["amount"] < 0,
-                                 self.ledger)
-    total_withdrawals = abs(
-        sum(map(lambda entry: entry["amount"], withdraw_operations)))
-    return total_withdrawals
+    return sum(entry["amount"] for entry in self.ledger if entry['amount'] < 0 )
 
   def __str__(self):
     # Format title
     formatted_title = self.label.center(30, '*')
     # Format historical
-    formatted_entries = map(
-        lambda entry: f"{entry['description'][:23]:23}{entry['amount']:>7.2f}",
-        self.ledger)
-    formatted_historical = "\n".join(formatted_entries)
+    formatted_historical = "\n".join(f"{entry['description'][:23]:23}{entry['amount']:>7.2f}" for entry in self.ledger)
     # format balance
     formatted_balance = f"Total: {self.get_balance():.2f}"
     return f"{formatted_title}\n{formatted_historical}\n{formatted_balance}"
 
-
 def create_spend_chart(categories):
   template_string = "Percentage spent by category\n"
   # Calculate total withdrawals for each budget
-  total_withdrawals = list(
-      map(lambda category: category.get_withdrawals(), categories))
+  total_withdrawals = [ category.get_withdrawals() for category in categories ]
   # Calculate total of all withdrawals for each budget
   total = sum(total_withdrawals)
-  # Calculate a list of percentages for each withdrawal total
-  percentages = list(map(lambda withdrawal: withdrawal / total * 100, total_withdrawals))
-  concepts = list(map(lambda category: category.label, categories))
+  # Create a list of percentages for each withdrawal total
+  percentages = [ withdrawal / total * 100 for withdrawal in  total_withdrawals ]
+  concepts = [ category.label for category in categories ]
   # Find the maximum length of all words
   max_length = max(len(label) for label in concepts)
   for percent in range(100, -10, -10):
-    chart_entries = list(
-        map(lambda per: 'o' if per >= percent else ' ', percentages))
-    # Set a format for teh chart
-    template_string += f"{'{0}| '.format(percent).rjust(5)}{'  '.join(chart_entries)}  \n"
+    chart_line = [f"{'o' if per >= percent else ' '}" for per in percentages]
+    template_string += f"{percent:3}| {'  '.join(chart_line)}  \n"
   # Separator
   template_string += f"{'':4}-{'--'.join(['-']*len(percentages))}--\n"
   # Add the concepts labels for each budget
